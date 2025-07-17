@@ -1,0 +1,14 @@
+/* 让复选框列表横向排列 */
+.checkboxselectmultiple {
+    display: flex !important;
+    flex-wrap: wrap;
+    list-style: none;
+    padding: 0;
+}
+
+/* 让每个复选框项保持适当间距 */
+.checkboxselectmultiple li {
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+}

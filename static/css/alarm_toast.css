@@ -1,0 +1,116 @@
+.alarm-toast {
+    position: fixed;
+    top: 270px; /* 调整位置，避开顶部按钮栏 */
+    right: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #3a4a64, #2c3e50);
+    color: white;
+    border-radius: 10px;
+    width: 380px; /* 增加整体宽度 */
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    animation: slideIn 0.4s ease-out;
+    transition: all 0.5s ease;
+    overflow: hidden;
+    border-left: 4px solid #3498db;
+}
+
+.alarm-toast.hide {
+    opacity: 0;
+    transform: translateX(100px);
+}
+
+.alarm-toast-content {
+    display: flex;
+    position: relative;
+    padding: 0;
+}
+
+.alarm-image-container {
+    width: 213px; /* 16:9比例的宽度 */
+    height: 120px; /* 固定高度 */
+    overflow: hidden;
+}
+
+.alarm-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.alarm-text-container {
+    flex: 1;
+    padding: 12px 12px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.alarm-title {
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #3498db;
+}
+
+.alarm-message {
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.alarm-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.alarm-close-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 添加阴影效果以增强立体感 */
+.alarm-toast:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+}
+
+/* 适配深色模式 */
+@media (prefers-color-scheme: dark) {
+    .alarm-toast {
+        background: linear-gradient(135deg, #2c3e50, #1a2533);
+        border-left: 4px solid #2980b9;
+    }
+
+    .alarm-title {
+        color: #2980b9;
+    }
+}

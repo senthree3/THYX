@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>系统概览</title>
+    <link rel="stylesheet" href="{% static 'css/custom_home.css' %}">
+    <script src="{% static 'js/custom_home.js' %}" defer></script>
+</head>
+<body>
+<div class="container">
+    <div class="info-card">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">设备标识</div>
+                <p class="info-value device-id">{{ device_id }}</p>
+            </div>
+            <div class="info-item">
+                <div class="info-label">授权状态</div>
+                <p class="info-value {% if state %}status-authorized{% else %}status-unauthorized{% endif %}">
+                    {{ msg }}
+                </p>
+            </div>
+            <div class="info-item">
+                <div class="info-label">系统时间</div>
+                <div class="time-container">
+                    <span class="info-value" id="local-time"></span>
+                    <button class="btn btn-primary" onclick="syncTime()">同步时间</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-section">
+            <div class="action-group">
+                <button class="btn btn-default" onclick="updateKey()">更新密钥</button>
+                <button class="btn btn-default" onclick="downloadKey()">下载密钥</button>
+                {% if state %}
+                    <button class="btn btn-primary" onclick="uploadAuth()">更新授权</button>
+                {% else %}
+                    <button class="btn btn-warning" onclick="uploadAuth()">上传授权</button>
+                {% endif %}
+            </div>
+            <div class="action-group">
+                <button class="btn btn-orange" onclick="restartService()">重启服务</button>
+                <button class="btn btn-danger" onclick="restartDevice()">重启设备</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</body>
+</html>

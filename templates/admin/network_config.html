@@ -1,0 +1,429 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+.network-config-container {
+    max-width: 900px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.config-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid #e8eaec;
+    background: #fafafa;
+    border-radius: 6px 6px 0 0;
+}
+
+.config-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.config-body {
+    padding: 30px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #606266;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #409eff;
+    display: inline-block;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    min-height: 40px;
+}
+
+.form-label {
+    width: 120px;
+    font-weight: 500;
+    color: #606266;
+    font-size: 14px;
+    text-align: right;
+    margin-right: 20px;
+    flex-shrink: 0;
+}
+
+.form-control {
+    flex: 1;
+    max-width: 300px;
+}
+
+.el-select, .el-input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #606266;
+    background-color: #fff;
+    transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.el-select:focus, .el-input:focus {
+    outline: none;
+    border-color: #409eff;
+}
+
+.el-select:hover, .el-input:hover {
+    border-color: #c0c4cc;
+}
+
+.manual-config {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.manual-config.hidden {
+    display: none;
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.config-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-item label {
+    font-size: 13px;
+    color: #909399;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.config-item input {
+    height: 36px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #606266;
+    background-color: #fff;
+    transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.config-item input:focus {
+    outline: none;
+    border-color: #409eff;
+}
+
+.config-item input:hover {
+    border-color: #c0c4cc;
+}
+
+.form-actions {
+    margin-top: 30px;
+    text-align: right;
+    padding-top: 20px;
+    border-top: 1px solid #e8eaec;
+}
+
+.el-button {
+    display: inline-block;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid #dcdfe6;
+    color: #606266;
+    text-align: center;
+    box-sizing: border-box;
+    outline: none;
+    margin: 0;
+    transition: 0.1s;
+    font-weight: 500;
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.el-button--primary {
+    background-color: #409eff;
+    border-color: #409eff;
+    color: #fff;
+}
+
+.el-button--primary:hover {
+    background: #66b1ff;
+    border-color: #66b1ff;
+    color: #fff;
+}
+
+.el-button--primary:active {
+    background: #3a8ee6;
+    border-color: #3a8ee6;
+    color: #fff;
+}
+
+.method-description {
+    font-size: 13px;
+    color: #909399;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+.current-interface {
+    background: #e8f4fd;
+    border: 1px solid #b3d8ff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #409eff;
+    font-weight: 500;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="network-config-container">
+    <div class="config-header">
+        <h2>网络配置管理</h2>
+    </div>
+    
+    <div class="config-body">
+        <!-- 网卡选择区域 -->
+        <div class="form-section">
+            <div class="section-title">网卡选择</div>
+            <form method="get" id="interfaceForm">
+                <div class="form-group">
+                    <label class="form-label">当前网卡：</label>
+                    <div class="form-control">
+                        <select name="interface" class="el-select" onchange="this.form.submit()">
+                            {% for value, label in form.fields.interface.choices %}
+                                <option value="{{ value }}" {% if form.initial.interface == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- 网络配置区域 -->
+        <div class="form-section">
+            <div class="section-title">网络配置</div>
+            <form method="post" class="el-form">
+                {% csrf_token %}
+                
+                <!-- 显示当前配置的网卡 -->
+                <div class="form-group">
+                    <label class="form-label">配置网卡：</label>
+                    <div class="current-interface">{{ form.initial.interface }}</div>
+                </div>
+
+                <!-- IP分配方式 -->
+                <div class="form-group">
+                    <label class="form-label">分配方式：</label>
+                    <div class="form-control">
+                        <select name="method" class="el-select" id="methodSelect">
+                            {% for value, label in form.fields.method.choices %}
+                                <option value="{{ value }}" {% if form.method.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="method-description" id="methodDescription">
+                            选择IP地址的分配方式
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 手动配置区域 -->
+                <div class="manual-config" id="manualConfig">
+                    <div style="margin-bottom: 15px; font-weight: 500; color: #606266;">
+                        手动网络配置
+                    </div>
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <label for="id_ip_address">IP地址 *</label>
+                            <input type="text" name="ip_address" id="id_ip_address" 
+                                   value="{{ form.ip_address.value|default:'' }}" 
+                                   placeholder="例如: 192.168.1.100" class="el-input">
+                        </div>
+                        <div class="config-item">
+                            <label for="id_netmask">子网掩码 *</label>
+                            <input type="text" name="netmask" id="id_netmask" 
+                                   value="{{ form.netmask.value|default:'' }}" 
+                                   placeholder="例如: 255.255.255.0" class="el-input">
+                        </div>
+                        <div class="config-item">
+                            <label for="id_gateway">网关</label>
+                            <input type="text" name="gateway" id="id_gateway" 
+                                   value="{{ form.gateway.value|default:'' }}" 
+                                   placeholder="例如: 192.168.1.1" class="el-input">
+                        </div>
+                        <div class="config-item">
+                            <label for="id_dns">DNS服务器</label>
+                            <input type="text" name="dns" id="id_dns" 
+                                   value="{{ form.dns.value|default:'' }}" 
+                                   placeholder="例如: 8.8.8.8" class="el-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 隐藏字段：interface -->
+                <input type="hidden" name="interface" value="{{ form.initial.interface }}" id="hiddenInterface">
+
+                <div class="form-actions">
+                    <button type="submit" class="el-button el-button--primary">
+                        保存配置
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const methodSelect = document.getElementById('methodSelect');
+    const manualConfig = document.getElementById('manualConfig');
+    const methodDescription = document.getElementById('methodDescription');
+    const interfaceSelect = document.querySelector('select[name="interface"]');
+    const hiddenInterface = document.getElementById('hiddenInterface');
+    const configForm = document.querySelector('form.el-form');
+    
+    const descriptions = {
+        'dhcp': '自动从DHCP服务器获取IP地址、网关和DNS配置',
+        'auto': '自动从DHCP服务器获取IP地址、网关和DNS配置',
+        'manual': '手动设置IP地址、子网掩码、网关和DNS服务器',
+        'static': '使用静态IP配置'
+    };
+    
+    function updateConfigDisplay() {
+        const selectedMethod = methodSelect.value;
+        
+        // 更新描述文字
+        if (descriptions[selectedMethod]) {
+            methodDescription.textContent = descriptions[selectedMethod];
+        }
+        
+        // 控制手动配置区域的显示
+        if (selectedMethod === 'manual' || selectedMethod === 'static') {
+            manualConfig.classList.remove('hidden');
+            manualConfig.style.display = 'block';
+        } else {
+            manualConfig.classList.add('hidden');
+            manualConfig.style.display = 'none';
+        }
+    }
+    
+    // 更新隐藏的interface字段值
+    function updateHiddenInterface() {
+        if (interfaceSelect && hiddenInterface) {
+            hiddenInterface.value = interfaceSelect.value;
+        }
+    }
+    
+    // 监听分配方式变化
+    if (methodSelect) {
+        methodSelect.addEventListener('change', updateConfigDisplay);
+    }
+    
+    // 监听网卡选择变化，更新隐藏字段
+    if (interfaceSelect) {
+        interfaceSelect.addEventListener('change', function() {
+            updateHiddenInterface();
+            // 不自动提交，等用户手动选择后再提交
+        });
+    }
+    
+    // 表单提交前确保interface值正确
+    if (configForm) {
+        configForm.addEventListener('submit', function(e) {
+            updateHiddenInterface();
+            
+            // 如果是手动配置，检查必填字段
+            if (methodSelect.value === 'manual' || methodSelect.value === 'static') {
+                const ipAddress = document.getElementById('id_ip_address').value.trim();
+                const netmask = document.getElementById('id_netmask').value.trim();
+                
+                if (!ipAddress || !netmask) {
+                    e.preventDefault();
+                    alert('手动配置模式下，请填写IP地址和子网掩码！');
+                    return false;
+                }
+                
+                // 验证IP地址格式
+                const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+                if (!ipRegex.test(ipAddress)) {
+                    e.preventDefault();
+                    alert('请输入正确的IP地址格式！');
+                    return false;
+                }
+                
+                if (!ipRegex.test(netmask)) {
+                    e.preventDefault();
+                    alert('请输入正确的子网掩码格式！');
+                    return false;
+                }
+            } else {
+                // 自动配置模式下，清空手动配置的字段值，避免后端验证错误
+                document.getElementById('id_ip_address').value = '';
+                document.getElementById('id_netmask').value = '';
+                document.getElementById('id_gateway').value = '';
+                document.getElementById('id_dns').value = '';
+            }
+            
+            // 显示提交状态
+            const submitBtn = configForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '正在保存...';
+                
+                // 防止重复提交，3秒后恢复按钮
+                setTimeout(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '保存配置';
+                }, 3000);
+            }
+        });
+    }
+    
+    // 初始化显示状态
+    updateConfigDisplay();
+    updateHiddenInterface();
+    
+    // 添加成功消息自动隐藏
+    const messages = document.querySelectorAll('.messages .success, .messages .info, .messages .warning, .messages .error');
+    messages.forEach(function(msg) {
+        setTimeout(function() {
+            msg.style.transition = 'opacity 0.5s ease';
+            msg.style.opacity = '0';
+            setTimeout(function() {
+                msg.remove();
+            }, 500);
+        }, 3000);
+    });
+});
+</script>
+{% endblock %}

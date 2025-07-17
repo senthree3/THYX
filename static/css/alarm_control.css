@@ -1,0 +1,16 @@
+
+.alarm-toggle-btn {
+    margin-right: 6px;
+}
+
+.alarm-toggle-btn.active-bell {
+    color: #f56c6c;
+}
+
+.alarm-toggle-btn.active-audio {
+    color: #67c23a;
+}
+
+.alarm-toggle-btn.inactive {
+    color: #ccc;
+}

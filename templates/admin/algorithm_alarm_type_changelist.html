@@ -1,0 +1,221 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .algorithm-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    
+    .algorithm-table th, .algorithm-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        text-align: left;
+    }
+    
+    .algorithm-table th {
+        background-color: #f9f9f9;
+        font-weight: 500;
+    }
+    
+    .authorization-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background-color: #e8f5e9;
+        color: #4caf50;
+    }
+    
+    .expand-button {
+        cursor: pointer;
+        color: #1890ff;
+        margin-right: 8px;
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        text-align: center;
+        line-height: 16px;
+        transition: transform 0.3s;
+    }
+    
+    .expand-button.expanded {
+        transform: rotate(90deg);
+    }
+    
+    .algorithm-details {
+        display: none;
+        padding: 20px;
+        background-color: #fafafa;
+        border-top: 1px solid #f0f0f0;
+        margin-bottom: 20px;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .details-title {
+        margin-bottom: 15px;
+        font-weight: 500;
+        color: #333;
+        border-left: 3px solid #1890ff;
+        padding-left: 10px;
+    }
+    
+    .alarm-types-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .alarm-types-table th, .alarm-types-table td {
+        padding: 10px 12px;
+        border: 1px solid #e8e8e8;
+        text-align: left;
+    }
+    
+    .alarm-types-table th {
+        background-color: #f5f5f5;
+    }
+    
+    .details-section {
+        margin-bottom: 20px;
+    }
+    
+    .details-desc {
+        background-color: #f0f8ff;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        border-left: 3px solid #1890ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    {% block object-tools %}
+        {{ block.super }}
+    {% endblock %}
+    
+    <div class="module filtered">
+        <div class="results">
+            <table class="algorithm-table">
+                <thead>
+                    <tr>
+                        <th>所属算法</th>
+                        <th>授权状态</th>
+                        <th>一级编号</th>
+                        <th>二级编号</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for algorithm in algorithms %}
+                    <tr>
+                        <td>
+                            <span class="expand-button" data-item="{{ algorithm.item }}" onclick="toggleDetails(this)">▶</span>
+                            {{ algorithm.name }}
+                        </td>
+                        <td><span class="authorization-badge">是</span></td>
+                        <td>{{ algorithm.code }}</td>
+                        <td>{{ algorithm.item }}</td>
+                    </tr>
+                    <tr class="algorithm-details-row" id="details-{{ algorithm.item }}">
+                        <td colspan="4" class="algorithm-details">
+                            <div class="details-section">
+                                <h3 class="details-title">算法介绍</h3>
+                                <p class="details-desc">{{ algorithm.desc }}</p>
+                            </div>
+                            
+                            <div class="details-section">
+                                <h3 class="details-title">存在的告警类型</h3>
+                                <table class="alarm-types-table">
+                                    <thead>
+                                        <tr>
+                                            <th>告警描述</th>
+                                            <th>告警类别</th>
+                                            <th>语音文件</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for alarm in algorithm.explicit_alarms %}
+                                        <tr>
+                                            <td>{{ alarm.name }}</td>
+                                            <td>{{ alarm.property }}</td>
+                                            <td>{{ alarm.audio_file }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">没有可用的算法</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 所有数据已在页面加载时被服务器传递到前端
+    // 无需额外的AJAX请求
+    function toggleDetails(button) {
+        const algorithmItem = button.getAttribute('data-item');
+        const detailsRow = document.getElementById(`details-${algorithmItem}`);
+        const detailsContent = detailsRow.querySelector('.algorithm-details');
+        
+        if (detailsContent.style.display === 'block') {
+            detailsContent.style.display = 'none';
+            button.textContent = '▶';
+            button.classList.remove('expanded');
+        } else {
+            detailsContent.style.display = 'block';
+            button.textContent = '▼';
+            button.classList.add('expanded');
+        }
+    }
+    
+    // 添加搜索功能
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('input[name="q"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchText = this.value.toLowerCase();
+                const rows = document.querySelectorAll('.algorithm-table tbody tr:not(.algorithm-details-row)');
+                
+                rows.forEach(function(row) {
+                    const name = row.querySelector('td:first-child').textContent.toLowerCase();
+                    const code = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                    const item = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+                    
+                    const detailsItem = row.querySelector('.expand-button').getAttribute('data-item');
+                    const detailsRow = document.getElementById(`details-${detailsItem}`);
+                    
+                    if (name.includes(searchText) || code.includes(searchText) || item.includes(searchText)) {
+                        row.style.display = '';
+                        if (detailsRow) {
+                            detailsRow.style.display = '';
+                        }
+                    } else {
+                        row.style.display = 'none';
+                        if (detailsRow) {
+                            detailsRow.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

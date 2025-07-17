@@ -1,0 +1,578 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block content %}
+<div id="content-main" class="form-main">
+
+    <div class="page-header">
+        <div class="el-page-header">
+            <div class="el-page-header__left"><i class="el-icon-back"></i>
+                <div class="el-page-header__title" onclick="window.history.back();">返回</div>
+            </div>
+            <div class="el-page-header__content">区域和辅助线绘制</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <fieldset class="module aligned">
+            <!-- 绘制类型选择器 -->
+            <div class="form-row" style="margin-bottom: 10px;">
+                <div class="el-radio-group">
+                    <label class="el-radio"><input type="radio" name="draw-type" value="region" checked> 绘制区域</label>
+                    <label class="el-radio"><input type="radio" name="draw-type" value="line"> 绘制辅助线</label>
+                </div>
+            </div>
+            
+            <!-- 算法选择 -->
+            <div class="form-row" style="margin-bottom: 10px;">
+                <div class="field-box">
+                    <label>选择算法:</label>
+                    <div id="algorithms-container">
+                        <!-- 区域算法 -->
+                        <div id="zone-algorithms" class="algorithm-group">
+                            {% for alg in need_zone_alg %}
+                            <label class="el-checkbox">
+                                <input type="checkbox" class="algorithm-checkbox" data-type="region" value="{{ alg.en_name }}" data-name="{{ alg.name }}"> 
+                                {{ alg.name }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- 辅助线算法 -->
+                        <div id="line-algorithms" class="algorithm-group" style="display: none;">
+                            {% for alg in need_line_alg %}
+                            <label class="el-checkbox">
+                                <input type="checkbox" class="algorithm-checkbox" data-type="line" value="{{ alg.en_name }}" data-name="{{ alg.name }}"> 
+                                {{ alg.name }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 名称输入 -->
+            <div class="form-row" style="margin-bottom: 10px;">
+                <div class="field-box">
+                    <label for="region-name">名称:</label>
+                    <input type="text" id="region-name" class="vTextField" placeholder="请输入区域名称(英文)">
+                </div>
+            </div>
+            
+            <!-- 绘制画布 -->
+            <div id="canvas-container" class="form-row">
+                <canvas id="drawing-canvas" style="border:1px solid #000000;" width="1152" height="648"></canvas>
+            </div>
+            <input type="hidden" id="image-url" value="{{ image_url }}">
+            
+            <!-- 已绘制对象列表 -->
+            <div class="form-row" style="margin-top: 20px;">
+                <h3>已绘制对象列表</h3>
+                <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+                    <table class="el-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>类型</th>
+                                <th>名称</th>
+                                <th>关联算法</th>
+                                <th>关联算法(英文)</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawn-objects-list">
+                            <!-- 绘制对象将在这里动态添加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <div class="other-warp">
+                <button id="save-button" type="submit" name="_save"
+                        class="el-button el-button--primary el-button--small">
+                    保存
+                </button>
+                <button id="clear-button" type="button" class="el-button el-button--danger el-button--small">
+                    清空全部
+                </button>
+                <button id="finish-line-button" type="button" class="el-button el-button--success el-button--small" style="display: none;">
+                    完成绘制辅助线
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var canvas = document.getElementById('drawing-canvas');
+            var ctx = canvas.getContext('2d');
+            var imageUrl = document.getElementById('image-url').value;
+            var saveButton = document.getElementById('save-button');
+            var clearButton = document.getElementById('clear-button');
+            var finishLineButton = document.getElementById('finish-line-button');
+            var regionNameInput = document.getElementById('region-name');
+            var drawTypeRadios = document.getElementsByName('draw-type');
+            var drawnObjectsList = document.getElementById('drawn-objects-list');
+            var pk = "{{ pk }}";
+            
+            // 数据存储
+            var regions = []; // 区域列表
+            var lines = []; // 辅助线列表
+            var currentPoints = []; // 当前绘制的点
+            var currentImagePoints = []; // 对应的图像坐标点
+            var startPoint = null; // 起始点
+            var drawingMode = 'region'; // 默认绘制模式为区域
+            
+            // 加载旧数据
+            var oldData = JSON.parse("{{old_regions|escapejs}}");
+            
+            var img = new Image();
+            img.src = imageUrl;
+            
+            // 切换绘制类型
+            document.querySelectorAll('input[name="draw-type"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    drawingMode = this.value;
+                    // 显示对应的算法选择
+                    if (drawingMode === 'region') {
+                        document.getElementById('zone-algorithms').style.display = 'block';
+                        document.getElementById('line-algorithms').style.display = 'none';
+                        regionNameInput.placeholder = "请输入区域名称(英文)";
+                        finishLineButton.style.display = 'none';
+                    } else {
+                        document.getElementById('zone-algorithms').style.display = 'none';
+                        document.getElementById('line-algorithms').style.display = 'block';
+                        regionNameInput.placeholder = "请输入辅助线名称(英文)";
+                        finishLineButton.style.display = 'inline-block';
+                    }
+                });
+            });
+
+            img.onload = function () {
+                // 绘制图像以完全匹配画布大小
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // 加载旧数据
+                if (oldData.regions && oldData.regions.length > 0) {
+                    regions = oldData.regions;
+                }
+                if (oldData.lines && oldData.lines.length > 0) {
+                    lines = oldData.lines;
+                }
+                
+                // 更新已绘制对象列表
+                updateDrawnObjectsList();
+                
+                // 重绘所有对象
+                redrawAll();
+            };
+
+            function redrawAll() {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // 重新绘制图像
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // 绘制所有区域
+                regions.forEach(function(region) {
+                    drawRegion(region);
+                });
+                
+                // 绘制所有辅助线
+                lines.forEach(function(line) {
+                    drawLine(line);
+                });
+                
+                // 绘制当前正在绘制的对象
+                if (currentPoints.length > 0) {
+                    // 绘制当前点
+                    currentPoints.forEach(function(point, index) {
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'red';
+                        ctx.fill();
+                        ctx.closePath();
+                        
+                        // 连接线条
+                        if (index > 0) {
+                            ctx.beginPath();
+                            ctx.moveTo(currentPoints[index-1].x, currentPoints[index-1].y);
+                            ctx.lineTo(point.x, point.y);
+                            ctx.strokeStyle = drawingMode === 'region' ? 'blue' : 'green';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            ctx.closePath();
+                        }
+                    });
+                }
+            }
+            
+            // 绘制单个区域
+            function drawRegion(region) {
+                if (!region.points || region.points.length < 3) return;
+                
+                var points = region.points.map(function(point) {
+                    return convertImageToCanvasCoordinates(point.x, point.y);
+                });
+                
+                ctx.beginPath();
+                points.forEach(function(point, index) {
+                    if (index === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                });
+                ctx.closePath();
+                ctx.strokeStyle = 'blue';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 绘制点
+                points.forEach(function(point) {
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'red';
+                    ctx.fill();
+                    ctx.closePath();
+                });
+                
+                // 显示区域名称
+                if (region.name) {
+                    var centerX = points.reduce(function(sum, point) { return sum + point.x; }, 0) / points.length;
+                    var centerY = points.reduce(function(sum, point) { return sum + point.y; }, 0) / points.length;
+                    
+                    ctx.font = '16px Arial';
+                    ctx.fillStyle = 'black';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(region.name, centerX, centerY);
+                }
+            }
+            
+            // 绘制单个辅助线
+            function drawLine(line) {
+                if (!line.points || line.points.length < 2) return;
+                
+                var points = line.points.map(function(point) {
+                    return convertImageToCanvasCoordinates(point.x, point.y);
+                });
+                
+                ctx.beginPath();
+                points.forEach(function(point, index) {
+                    if (index === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                });
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+                
+                // 绘制点
+                points.forEach(function(point) {
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'red';
+                    ctx.fill();
+                    ctx.closePath();
+                });
+                
+                // 显示线名称
+                if (line.name) {
+                    var centerX = points.reduce(function(sum, point) { return sum + point.x; }, 0) / points.length;
+                    var centerY = points.reduce(function(sum, point) { return sum + point.y; }, 0) / points.length;
+                    
+                    ctx.font = '16px Arial';
+                    ctx.fillStyle = 'black';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(line.name, centerX, centerY);
+                }
+            }
+
+            function convertCanvasToImageCoordinates(x, y) {
+                var scaleX = img.width / canvas.width;
+                var scaleY = img.height / canvas.height;
+                return {x: Math.max(Math.floor(x * scaleX), 0), y: Math.max(Math.floor(y * scaleY), 0)};
+            }
+            
+            function convertImageToCanvasCoordinates(x, y) {
+                var scaleX = canvas.width / img.width;
+                var scaleY = canvas.height / img.height;
+                return {x: Math.floor(x * scaleX), y: Math.floor(y * scaleY)};
+            }
+            
+            // 获取选中的算法
+            function getSelectedAlgorithms() {
+                var selected = [];
+                var selectedNames = [];
+                var type = drawingMode === 'region' ? 'region' : 'line';
+                
+                document.querySelectorAll('.algorithm-checkbox[data-type="' + type + '"]:checked').forEach(function(checkbox) {
+                    selected.push(checkbox.value);
+                    selectedNames.push(checkbox.dataset.name);
+                });
+                
+                return {
+                    values: selected,
+                    names: selectedNames
+                };
+            }
+            
+            // 更新已绘制对象列表
+            function updateDrawnObjectsList() {
+                drawnObjectsList.innerHTML = '';
+                
+                // 添加区域
+                regions.forEach(function(region, index) {
+                    var row = document.createElement('tr');
+                    
+                    var typeCell = document.createElement('td');
+                    typeCell.textContent = '区域';
+                    
+                    var nameCell = document.createElement('td');
+                    nameCell.textContent = region.name || 'UnnamedRegion';
+                    
+                    var algsChineseCell = document.createElement('td');
+                    algsChineseCell.textContent = (region.alg_names || []).join(', ');
+                    
+                    var algsEnglishCell = document.createElement('td');
+                    algsEnglishCell.textContent = (region.alg_list || []).join(', ');
+                    
+                    var actionCell = document.createElement('td');
+                    var deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.className = 'el-button el-button--danger el-button--mini';
+                    deleteBtn.onclick = function() {
+                        regions.splice(index, 1);
+                        updateDrawnObjectsList();
+                        redrawAll();
+                    };
+                    actionCell.appendChild(deleteBtn);
+                    
+                    row.appendChild(typeCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(algsChineseCell);
+                    row.appendChild(algsEnglishCell);
+                    row.appendChild(actionCell);
+                    
+                    drawnObjectsList.appendChild(row);
+                });
+                
+                // 添加辅助线
+                lines.forEach(function(line, index) {
+                    var row = document.createElement('tr');
+                    
+                    var typeCell = document.createElement('td');
+                    typeCell.textContent = '辅助线';
+                    
+                    var nameCell = document.createElement('td');
+                    nameCell.textContent = line.name || 'UnnamedLine';
+                    
+                    var algsChineseCell = document.createElement('td');
+                    algsChineseCell.textContent = (line.alg_names || []).join(', ');
+                    
+                    var algsEnglishCell = document.createElement('td');
+                    algsEnglishCell.textContent = (line.alg_list || []).join(', ');
+                    
+                    var actionCell = document.createElement('td');
+                    var deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.className = 'el-button el-button--danger el-button--mini';
+                    deleteBtn.onclick = function() {
+                        lines.splice(index, 1);
+                        updateDrawnObjectsList();
+                        redrawAll();
+                    };
+                    actionCell.appendChild(deleteBtn);
+                    
+                    row.appendChild(typeCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(algsChineseCell);
+                    row.appendChild(algsEnglishCell);
+                    row.appendChild(actionCell);
+                    
+                    drawnObjectsList.appendChild(row);
+                });
+            }
+
+            canvas.addEventListener('click', function (event) {
+                var rect = canvas.getBoundingClientRect();
+                var x = (event.clientX - rect.left);
+                var y = (event.clientY - rect.top);
+
+                // 绘制点
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+                ctx.closePath();
+
+                // 保存点坐标
+                var imgCoordinates = convertCanvasToImageCoordinates(x, y);
+                if (currentPoints.length === 0) {
+                    currentPoints.push({x: x, y: y});
+                    currentImagePoints.push(imgCoordinates);
+                    startPoint = {x: x, y: y};
+                } else if (x !== currentPoints[currentPoints.length - 1].x || y !== currentPoints[currentPoints.length - 1].y) {
+                    currentPoints.push({x: x, y: y});
+                    currentImagePoints.push(imgCoordinates);
+                    
+                    // 连接线条
+                    ctx.beginPath();
+                    ctx.moveTo(currentPoints[currentPoints.length - 2].x, currentPoints[currentPoints.length - 2].y);
+                    ctx.lineTo(x, y);
+                    ctx.strokeStyle = drawingMode === 'region' ? 'blue' : 'green';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+            });
+
+            canvas.addEventListener('dblclick', function (event) {
+                if (drawingMode === 'region' && currentPoints.length > 2 && startPoint) {
+                    // 连接到起始点，形成闭合区域
+                    ctx.beginPath();
+                    ctx.moveTo(currentPoints[currentPoints.length - 1].x, currentPoints[currentPoints.length - 1].y);
+                    ctx.lineTo(startPoint.x, startPoint.y);
+                    ctx.strokeStyle = 'blue';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    // 获取区域名称和选中的算法
+                    var name = regionNameInput.value || 'UnnamedRegion';
+                    var selectedAlgs = getSelectedAlgorithms();
+                    
+                    // 保存区域
+                    regions.push({
+                        name: name,
+                        alg_list: selectedAlgs.values,
+                        alg_names: selectedAlgs.names,
+                        points: currentImagePoints.slice()
+                    });
+                    
+                    // 重置
+                    currentPoints = [];
+                    currentImagePoints = [];
+                    startPoint = null;
+                    
+                    // 清空输入框
+                    regionNameInput.value = '';
+                    
+                    // 更新界面
+                    updateDrawnObjectsList();
+                    redrawAll();
+                }
+            });
+            
+            // 完成辅助线绘制按钮
+            finishLineButton.addEventListener('click', function() {
+                if (drawingMode === 'line' && currentPoints.length >= 2) {
+                    // 获取辅助线名称和选中的算法
+                    var name = regionNameInput.value || 'UnnamedLine';
+                    var selectedAlgs = getSelectedAlgorithms();
+                    
+                    // 保存辅助线
+                    lines.push({
+                        name: name,
+                        alg_list: selectedAlgs.values,
+                        alg_names: selectedAlgs.names,
+                        points: currentImagePoints.slice()
+                    });
+                    
+                    // 重置
+                    currentPoints = [];
+                    currentImagePoints = [];
+                    startPoint = null;
+                    
+                    // 清空输入框
+                    regionNameInput.value = '';
+                    
+                    // 更新界面
+                    updateDrawnObjectsList();
+                    redrawAll();
+                } else if (drawingMode === 'line' && currentPoints.length < 2) {
+                    alert('辅助线至少需要2个点');
+                }
+            });
+
+            function saveRegionsAndLines() {
+                var dataToSend = {
+                    pk: pk,
+                    image_url: imageUrl,
+                    regions: regions,
+                    lines: lines
+                };
+                
+                fetch(``, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(dataToSend)
+                }).then(response => response.json())
+                    .then(data => {
+                        window.history.back();
+                    }).catch(error => {
+                        console.error('保存失败:', error);
+                    });
+            }
+
+            saveButton.addEventListener('click', function () {
+                if (regions.length > 0 || lines.length > 0 || currentPoints.length > 0) {
+                    // 如果有正在绘制的内容，提示用户完成绘制
+                    if (currentPoints.length > 0) {
+                        if (drawingMode === 'region') {
+                            alert('请先完成当前绘制（双击闭合区域）');
+                        } else {
+                            alert('请先完成当前绘制（点击"完成绘制辅助线"按钮）');
+                        }
+                        return;
+                    }
+                    saveRegionsAndLines();
+                } else {
+                    alert('请先绘制区域或辅助线!');
+                }
+            });
+
+            clearButton.addEventListener('click', function () {
+                regions = [];
+                lines = [];
+                currentPoints = [];
+                currentImagePoints = [];
+                startPoint = null;
+                updateDrawnObjectsList();
+                redrawAll();
+            });
+        });
+    </script>
+    
+    <style>
+        .algorithm-group {
+            margin: 10px 0;
+        }
+        .el-checkbox {
+            margin-right: 15px;
+        }
+        .el-radio {
+            margin-right: 15px;
+        }
+        .el-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .el-table th, .el-table td {
+            border: 1px solid #ebeef5;
+            padding: 8px;
+            text-align: left;
+        }
+        .el-table th {
+            background-color: #f5f7fa;
+        }
+    </style>
+</div>
+{% endblock %}

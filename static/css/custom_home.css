@@ -1,0 +1,193 @@
+/* 基础样式 */
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #f5f5f5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.container {
+    max-width: 98%;
+    width: 100%;
+    margin: 0 auto;
+    min-width: 800px;
+}
+
+/* 信息卡片样式 */
+.info-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* 信息网格布局 */
+.info-grid {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 2fr;
+    gap: 40px;
+    margin-bottom: 30px;
+}
+
+.info-item {
+    text-align: center;
+    padding: 0 15px;
+}
+
+.info-item:not(:last-child) {
+    border-right: 1px solid #e5e5e5;
+}
+
+/* 信息标签和值样式 */
+.info-label {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+    font-weight: normal;
+}
+
+.info-value {
+    font-size: 16px;
+    color: #333;
+    font-weight: 500;
+    margin: 0;
+}
+
+.info-value.device-id {
+    font-family: monospace;
+    font-size: 16px;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+/* 时间容器样式 */
+.time-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* 状态样式 */
+.status-authorized {
+    color: #52c41a;
+    font-weight: 500;
+}
+
+.status-unauthorized {
+    color: #ff4d4f;
+    font-weight: 500;
+}
+
+/* 操作区域样式 */
+.actions-section {
+    border-top: 1px solid #e5e5e5;
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.action-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* 按钮基础样式 */
+.btn {
+    padding: 6px 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+/* 按钮主题样式 */
+.btn-primary {
+    background: #1890ff;
+    border-color: #1890ff;
+    color: white;
+}
+
+.btn-default {
+    background: white;
+    border-color: #d9d9d9;
+    color: #333;
+}
+
+.btn-warning {
+    background: #faad14;
+    border-color: #faad14;
+    color: white;
+}
+
+.btn-orange {
+    background: #fa8c16;
+    border-color: #fa8c16;
+    color: white;
+}
+
+.btn-danger {
+    background: #ff4d4f;
+    border-color: #ff4d4f;
+    color: white;
+}
+
+/* 响应式布局 */
+@media (max-width: 1024px) {
+    .container {
+        min-width: auto;
+        max-width: 98%;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .info-item:not(:last-child) {
+        border-right: none;
+        border-bottom: 1px solid #e5e5e5;
+        padding-bottom: 15px;
+    }
+
+    .actions-section {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .action-group {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+}
+
+/* 让复选框列表横向排列 */
+.checkboxselectmultiple {
+    display: flex !important;
+    flex-wrap: wrap;
+    list-style: none;
+    padding: 0;
+}
+
+/* 让每个复选框项保持适当间距 */
+.checkboxselectmultiple li {
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+}

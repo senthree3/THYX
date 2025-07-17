@@ -1,0 +1,323 @@
+{% extends 'admin/base_site.html' %}
+{% block content %}
+<div class="module">
+    <div class="grid-container">
+        {% for task, port in page_obj %}
+        <div class="grid-item" data-port="{{ port }}" data-task="{{ task }}">
+            <div class="image-container">
+                <img id="imageContainer_{{ forloop.counter }}" src="#" alt="接收的图像"
+                     style="width: 100%; height: auto;">
+                <button type="button" onclick="openFullscreen('{{ port }}', '{{ task }}', {{ forloop.counter }})" class="el-button el-button--default is-circle fullscreen-btn">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                </button>
+            </div>
+            <div class="error-message" id="error_{{ forloop.counter }}" style="color: red; display: none;">
+                AI视频流错误
+            </div>
+            <p>{{ task }}</p>
+        </div>
+        {% endfor %}
+        {% for i in forloop.counter|add:1|slice:":9" %}
+        <div class="grid-item empty">
+            <!-- 空白区域 -->
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+    <div class="pagination">
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; 首页</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                {% endif %}
+
+                <span class="current">
+                    第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">末页 &raquo;</a>
+                {% endif %}
+            </span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 全屏模态框 -->
+<div id="fullscreenModal" class="modal">
+    <span class="close-modal" id="closeModal">&times;</span>
+    <img class="modal-content" id="fullscreenImage" src="#">
+    <div id="modalCaption"></div>
+</div>
+
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .grid-item {
+        border: 1px solid #ccc;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        text-align: center;
+        position: relative;
+    }
+
+    .grid-item .image-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .grid-item img {
+        width: 100%;
+        height: auto;
+    }
+
+    .grid-item .error-message {
+        color: red;
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .grid-item p {
+        margin-top: auto;
+    }
+
+    .grid-item.empty {
+        border: 1px dashed #ccc;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .pagination .step-links a {
+        margin: 0 5px;
+        text-decoration: none;
+    }
+    
+    /* The full-screen button styles */
+    .fullscreen-btn {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background-color: white;
+        border: 1px solid #dcdfe6;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+    
+    /* 模态框样式 */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        padding-top: 50px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.9);
+    }
+    
+    .modal-content {
+        margin: auto;
+        display: block;
+        max-width: 90%;
+        max-height: 90%;
+    }
+    
+    #modalCaption {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 700px;
+        text-align: center;
+        color: #ccc;
+        padding: 10px 0;
+        height: 150px;
+    }
+    
+    .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+        cursor: pointer;
+    }
+    
+    .close-modal:hover,
+    .close-modal:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // 存储所有WebSocket连接
+    const wsConnections = {};
+    let currentFullscreenData = null;
+    
+    // 打开全屏
+    function openFullscreen(port, task, index) {
+        console.log('全屏按钮被点击', port, task, index);
+        var modal = document.getElementById('fullscreenModal');
+        var modalImg = document.getElementById('fullscreenImage');
+        var modalCaption = document.getElementById('modalCaption');
+        
+        // 设置模态框内容
+        modalCaption.textContent = task;
+        modal.style.display = "block";
+        
+        // 使用当前任务的WebSocket连接，而不是创建新的
+        currentFullscreenData = {
+            port: port,
+            task: task,
+            index: index
+        };
+        
+        // 确保已有的WebSocket连接还在
+        const existingSocket = wsConnections[port];
+        if (existingSocket && existingSocket.readyState === WebSocket.OPEN) {
+            // 使用已经存在的连接，只需要更新显示目标
+            console.log('使用现有WebSocket连接显示全屏图像');
+        } else {
+            // 如果连接不存在或已关闭，重新创建
+            console.log('创建新的WebSocket连接用于全屏显示');
+            createWebSocketConnection(port, task, index, true);
+        }
+    }
+    
+    // 关闭全屏
+    function closeFullscreen() {
+        console.log('关闭全屏');
+        var modal = document.getElementById('fullscreenModal');
+        modal.style.display = "none";
+        
+        // 不关闭WebSocket连接，只是切换回网格视图
+        currentFullscreenData = null;
+    }
+    
+    // 创建WebSocket连接的函数
+    function createWebSocketConnection(port, task, gridIndex, isFullscreen = false) {
+        if (!port) return;
+        
+        // 新的WebSocket URL格式，使用Nginx代理
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/video_stream/${port}`;
+        console.log(`创建WebSocket连接: ${wsUrl}, 任务: ${task}`);
+        
+        // 关闭可能存在的旧连接
+        if (wsConnections[port] && wsConnections[port].readyState !== WebSocket.CLOSED) {
+            wsConnections[port].close();
+        }
+        
+        const socket = new WebSocket(wsUrl);
+        wsConnections[port] = socket;
+        
+        // 网格视图的元素
+        const gridItem = document.querySelector(`.grid-item[data-port="${port}"][data-task="${task}"]`);
+        const gridImageContainer = gridItem ? gridItem.querySelector('img') : null;
+        const errorMessage = gridItem ? gridItem.querySelector('.error-message') : null;
+        
+        // 全屏视图的元素
+        const modalImg = document.getElementById('fullscreenImage');
+        
+        socket.onopen = function(event) {
+            console.log(`WebSocket连接已建立: ${port}, 任务: ${task}`);
+        };
+        
+        socket.onmessage = function(event) {
+            const imageData = event.data;
+            
+            // 更新网格视图中的图像
+            if (gridImageContainer) {
+                gridImageContainer.src = "data:image/jpeg;base64," + imageData;
+                gridImageContainer.style.display = 'block';
+                if (errorMessage) errorMessage.style.display = 'none';
+            }
+            
+            // 如果当前处于全屏模式且是当前任务，也更新全屏图像
+            if (currentFullscreenData && currentFullscreenData.port === port) {
+                modalImg.src = "data:image/jpeg;base64," + imageData;
+            }
+        };
+        
+        socket.onclose = function(event) {
+            console.log(`WebSocket连接已关闭: ${port}, 任务: ${task}`);
+            if (gridImageContainer) gridImageContainer.style.display = 'none';
+            if (errorMessage) errorMessage.style.display = 'block';
+        };
+        
+        socket.onerror = function(error) {
+            console.error(`WebSocket连接发生错误: ${port}, 任务: ${task}`, error);
+            if (gridImageContainer) gridImageContainer.style.display = 'none';
+            if (errorMessage) errorMessage.style.display = 'block';
+        };
+        
+        return socket;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        const gridItems = document.querySelectorAll('.grid-item:not(.empty)');
+        const modal = document.getElementById('fullscreenModal');
+        const closeBtn = document.getElementById('closeModal');
+        
+        // 初始化网格项的WebSocket连接
+        gridItems.forEach((item, index) => {
+            const port = item.getAttribute('data-port');
+            const task = item.getAttribute('data-task');
+            
+            if (port && task) {
+                createWebSocketConnection(port, task, index);
+            }
+        });
+        
+        // 设置关闭按钮事件
+        closeBtn.addEventListener('click', closeFullscreen);
+        
+        // 设置点击模态框背景关闭
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeFullscreen();
+            }
+        });
+        
+        // 添加页面卸载时关闭所有连接
+        window.addEventListener('beforeunload', function() {
+            Object.values(wsConnections).forEach(socket => {
+                if (socket && socket.readyState !== WebSocket.CLOSED) {
+                    socket.close();
+                }
+            });
+        });
+        
+        console.log('DOM完全加载，事件监听器已设置');
+    });
+</script>
+{% endblock %}

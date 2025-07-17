@@ -1,0 +1,10 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block script %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/alarm_control.css' %}">
+    <link rel="stylesheet" href="{% static 'css/alarm_toast.css' %}">
+    <script src="{% static 'js/alarm_control.js' %}"></script>
+    <script src="{% static 'js/alarm_toast.js' %}"></script>
+{% endblock %}
