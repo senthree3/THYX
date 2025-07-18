@@ -6,6 +6,9 @@
 通过内置语音播报、弹窗提醒、实时画面展示与 Web 管理后台，钛慧云匣提供直观高效的人机交互体验，广泛应用于安防、工业、交通等行业，助力构建稳定可靠的智能感知系统。
 
 ---
+  [英文文档](./README.md)  | [视频介绍](https://www.bilibili.com/video/BV1zngPzDEjH/?share_source=copy_web&vd_source=62931384caa0e163fcd9fa7cf3c64a71)
+
+---
 
 ## 📸 平台功能总览
 

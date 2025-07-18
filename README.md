@@ -12,7 +12,7 @@ manufacturing, and transportation, helping build stable and reliable intelligent
 
 ---
 
-  [中文文档](./README_ZH.md)
+  [Chinese Document](./README_ZH.md)  | [Video Introduction](https://www.bilibili.com/video/BV1zngPzDEjH/?share_source=copy_web&vd_source=62931384caa0e163fcd9fa7cf3c64a71)
 
 ---
 
